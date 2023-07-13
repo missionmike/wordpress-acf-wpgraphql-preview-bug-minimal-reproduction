@@ -1,0 +1,70 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo 'Usage:'
+    echo ''
+    echo './run [item]'
+    echo ''
+    echo 'Where [item] can be:'
+    echo ''
+    echo 'mysql:import            | import the local News database from local filesystem.'
+    echo 'mysql:export            | import the local News database to local filesystem. Use `--upload` flag to sync to S3.'
+    echo ''
+    exit 0;
+fi
+
+DOCKER_DB_LOCAL_PATH="./docker/db/"
+MYSQL_CONTAINER_ID=$(docker container ls  | grep 'wordpress-minimal-repo-db' | awk '{print $1}')
+
+##############################################
+#
+# Initialize dependencies for
+# local development.
+#
+##############################################
+if [[ $1 = "init" ]]; then
+    shift 1
+    echo "Using flags: $*"
+    # Using $2 allows us to pass in additional flag, like --build for force a re-build.
+    COMPOSE_PROJECT_NAME=wordpress-minimal-repo docker compose up -d --force-recreate $*
+fi
+
+##############################################
+#
+# Imports database for local dev into the MySQL
+# container.
+#
+##############################################
+if [[ $1 = "mysql:import" ]]; then
+    if [[ $2 != '-y' ]]; then
+        read -r -p "Are you sure? This will overwrite the existing local database. [y/N] " response
+    else
+        response='y'
+    fi
+
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
+    then
+        # Import extracted SQL
+        echo "Attempting to clear the wordpress database from container ID: $MYSQL_CONTAINER_ID..."
+        docker exec -i $MYSQL_CONTAINER_ID mysql -u root -p"iamreallystrongpassword" -e "DROP DATABASE IF EXISTS wpdb; CREATE DATABASE wpdb"
+        echo "Importing docker/db.sql into wordpress database..."
+        docker exec -i $MYSQL_CONTAINER_ID mysql -u root -p"iamreallystrongpassword" "wpdb" < docker/db.sql
+        echo "Granting permissions to WordPress user..."
+        docker exec -i $MYSQL_CONTAINER_ID mysql -u root -p"iamreallystrongpassword" -e "GRANT ALL PRIVILEGES ON wpdb.* TO 'wp'@'%' IDENTIFIED BY 'iamsortastrongpassword'; FLUSH PRIVILEGES;"
+        echo 'Done.'
+    else
+        echo 'Canceling local database import.'
+        exit 1
+    fi
+fi
+
+##############################################
+#
+# Exports database for local dev into the MySQL container.
+#
+##############################################
+if [[ $1 = "mysql:export" ]]; then    
+    echo "Exporting wordpress database..."
+    docker exec -i $MYSQL_CONTAINER_ID mysqldump -u root -p"iamreallystrongpassword" "wpdb" --set-gtid-purged=OFF > docker/db.sql
+    echo 'Done.'
+fi
