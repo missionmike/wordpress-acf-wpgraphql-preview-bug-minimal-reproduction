@@ -2,6 +2,8 @@
 
 ## Setup
 
+> Note: You'll need to have Docker installed to run this.
+
 1. Clone this repository.
 2. Open in VS Code (or other IDE), and run `./run init` from the project root.
 3. After containers have started, run `./run mysql:import` to import the DB.
