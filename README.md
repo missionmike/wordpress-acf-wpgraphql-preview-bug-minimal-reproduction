@@ -8,7 +8,8 @@
 2. Open in VS Code (or other IDE), and run `./run init` from the project root.
 3. After containers have started, run `./run mysql:import` to import the DB.
 4. Be sure you can sign into wp-admin on http://localhost:8000/wp-admin with username/password: admin/admin
-5. Open Postman, and configure a `POST` request to http://localhost:8000/graphql and set the body to:
+5. Disable the Classic Editor plugin. This issue does not happen when using the Classic Editor, but the plugin is included here for testing & debugging purposes.
+6. Open Postman, and configure a `POST` request to http://localhost:8000/graphql and set the body to:
 
 ```
 query getPost($id: ID!) {
@@ -56,7 +57,7 @@ And for variables:
 
 ## Description of Issue
 
-When the post content, title, or other standard WordPress fields are updated and previewed in WordPress, the GraphQL response in preview mode will return `null` for associated custom fields.
+When the post content, title, or other standard WordPress fields are updated and previewed in WordPress via **Gutenberg editor**, the GraphQL response in preview mode will return `null` for associated custom fields.
 
 For example, here is a response for preview of an already-published post. Note how the `mainArt` and `customFields` values are populated:
 
